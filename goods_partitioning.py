@@ -29,38 +29,70 @@ class Profile:
         p = '\n'.join(map(str, zip(*self.profile)))
         return f"{self.capacity}\n{p}\n"
 
+    def cap_sum(self):
+        return sum(self.capacity.values())
+
+    def voters_num(self):
+        return len(self.profile)
+
 
 class ConsumingVeto:
-    @staticmethod
-    def _step(profile: Profile):
-        last_positions = cl.Counter([pref[-1] for pref in profile.profile])
+    def __init__(self, profile: Profile):
+        self.profile = profile
 
-        rk = min(
-            candidate_capacity/last_positions[candidate_name]
-            for candidate_name, candidate_capacity in profile.capacity.items()
-            if last_positions[candidate_name]
-        )
+    def _update_profile(self, coefficient: float):
+        last_positions = cl.Counter([pref[-1] for pref in self.profile.profile])
 
         new_capacities = {
-            candidate_name: round(candidate_capacity - last_positions[candidate_name]*rk, 2) # noqa
-            for candidate_name, candidate_capacity in profile.capacity.items()
+            candidate_name: round(
+                candidate_capacity - last_positions[candidate_name] * coefficient, 2 # noqa
+            )
+            for candidate_name, candidate_capacity
+            in self.profile.capacity.items()
         }
         return Profile(
             capacity={n: c for n, c in new_capacities.items() if c},
             profile=[
                 [p for p in prefs if new_capacities[p]]
-                for prefs in profile.profile
+                for prefs in self.profile.profile
             ]
         )
 
-    @staticmethod
-    def run(profile: Profile):
-        print(f"initial_profile {profile}")
+    def _eat_candidate(self):
+        last_positions = cl.Counter([pref[-1] for pref in self.profile.profile])
 
-        prof = profile
-        while sum(prof.capacity.values()) > 1:
-            prof = ConsumingVeto._step(prof)
-            print(prof)
+        rk = min(
+            candidate_capacity / last_positions[candidate_name]
+            for candidate_name, candidate_capacity
+            in self.profile.capacity.items()
+            if last_positions[candidate_name]
+        )
+        return self._update_profile(rk)
+
+    def _eat_to_capacity(self, capacity: int):
+        n = self.profile.voters_num()
+        sum_c = self.profile.cap_sum()
+
+        rk = (sum_c - capacity) / n
+
+        return self._update_profile(rk)
+
+    def _step(self) -> Profile:
+        updated_profile = self._eat_candidate()
+
+        if updated_profile.cap_sum() >= 1:
+            return updated_profile
+
+        updated_profile = self._eat_to_capacity(1)
+
+        return updated_profile
+
+    def run(self):
+        print(f"initial_profile {self.profile}")
+
+        while sum(self.profile.capacity.values()) > 1:
+            self.profile = self._step()
+            print(self.profile)
 
 
 def random_profile(voters_num: int, candidates_num: int):
@@ -86,6 +118,6 @@ if __name__ == "__main__":
     # ]
 
     pref_prof = random_profile(voters_num=10, candidates_num=4)
-    ConsumingVeto.run(Profile.from_profile(pref_prof))
+    ConsumingVeto(Profile.from_profile(pref_prof)).run()
 
 
