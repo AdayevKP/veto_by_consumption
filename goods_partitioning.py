@@ -30,29 +30,37 @@ class Profile:
         return f"{self.capacity}\n{p}\n"
 
 
-def _step(profile: Profile):
-    counter = cl.Counter([pref[-1] for pref in profile.profile])
+class ConsumingVeto:
+    @staticmethod
+    def _step(profile: Profile):
+        last_positions = cl.Counter([pref[-1] for pref in profile.profile])
 
-    rk = min(
-        cap/counter[name]
-        for name, cap in profile.capacity.items()
-        if counter[name]
-    )
+        rk = min(
+            candidate_capacity/last_positions[candidate_name]
+            for candidate_name, candidate_capacity in profile.capacity.items()
+            if last_positions[candidate_name]
+        )
 
-    new_cap = {n: round(c - counter[n]*rk, 2) for n, c in profile.capacity.items()}
-    return Profile(
-        capacity={n: c for n, c in new_cap.items() if c},
-        profile=[[p for p in prefs if new_cap[p]] for prefs in profile.profile]
-    )
+        new_capacities = {
+            candidate_name: round(candidate_capacity - last_positions[candidate_name]*rk, 2) # noqa
+            for candidate_name, candidate_capacity in profile.capacity.items()
+        }
+        return Profile(
+            capacity={n: c for n, c in new_capacities.items() if c},
+            profile=[
+                [p for p in prefs if new_capacities[p]]
+                for prefs in profile.profile
+            ]
+        )
 
+    @staticmethod
+    def run(profile: Profile):
+        print(f"initial_profile {profile}")
 
-def consuming_veto(profile: Profile):
-    print(f"initial_profile {profile}")
-
-    prof = profile
-    while sum(prof.capacity.values()) > 1:
-        prof = _step(prof)
-        print(prof)
+        prof = profile
+        while sum(prof.capacity.values()) > 1:
+            prof = ConsumingVeto._step(prof)
+            print(prof)
 
 
 def random_profile(voters_num: int, candidates_num: int):
@@ -78,6 +86,6 @@ if __name__ == "__main__":
     # ]
 
     pref_prof = random_profile(voters_num=10, candidates_num=4)
-    consuming_veto(Profile.from_profile(pref_prof))
+    ConsumingVeto.run(Profile.from_profile(pref_prof))
 
 
