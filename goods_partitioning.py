@@ -21,10 +21,6 @@ class Profile:
             profile=pref_profile
         )
 
-    def get_dist(self):
-        sum_cap = sum(self.capacity.values())
-        return {n: round(c/sum_cap, 2) for n, c in self.capacity.items()}
-
     def __str__(self):
         p = '\n'.join(map(str, zip(*self.profile)))
         return f"{self.capacity}\n{p}\n"
@@ -77,21 +73,17 @@ class ConsumingVeto:
 
         return self._update_profile(rk)
 
-    def _step(self) -> Profile:
-        updated_profile = self._eat_candidate()
-
-        if updated_profile.cap_sum() >= 1:
-            return updated_profile
-
-        updated_profile = self._eat_to_capacity(1)
-
-        return updated_profile
-
     def run(self):
         print(f"initial_profile {self.profile}")
 
         while sum(self.profile.capacity.values()) > 1:
-            self.profile = self._step()
+            updated_profile = self._eat_candidate()
+
+            if updated_profile.cap_sum() >= 1:
+                self.profile = updated_profile
+            else:
+                self.profile = self._eat_to_capacity(1)
+
             print(self.profile)
 
 
